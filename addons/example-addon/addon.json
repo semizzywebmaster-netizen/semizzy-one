@@ -1,0 +1,43 @@
+{
+    "name": "Example Addon",
+    "slug": "example-addon",
+    "description": "A sample addon to demonstrate the SEMIZZY ONE addon engine. This addon proves that install, activate, register permissions, register menu, register settings, register routes, controllers, migrations, audit events, disable, and uninstall all work correctly.",
+    "version": "1.0.0",
+    "author": "SEMIZZY WEBMASTER",
+    "author_email": "semizzywebmaster@gmail.com",
+    "homepage": "https://semizzy.com",
+    "license": "proprietary",
+    "requires": {
+        "core": ">=2.0.0"
+    },
+    "permissions": [
+        {
+            "name": "View Example Dashboard",
+            "slug": "example.view",
+            "module": "example",
+            "description": "View the example addon dashboard"
+        },
+        {
+            "name": "Manage Example Items",
+            "slug": "example.manage",
+            "module": "example",
+            "description": "Create, edit, and delete example items"
+        }
+    ],
+    "settings": [
+        {
+            "key": "example_enabled",
+            "type": "boolean",
+            "default": "true",
+            "description": "Enable the example addon"
+        }
+    ],
+    "navigation": [
+        {
+            "label": "Example",
+            "route": "addon.example.index",
+            "icon": "puzzle",
+            "permission": "example.view"
+        }
+    ]
+}

@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* ============================================
+   SEMIZZY ONE — Design System
+   Primary Blue: #155EEF
+   Teal: #00B8A9
+   Navy: #071A33
+   White: #F8FAFC
+   Gray: #64748B
+   Gradient: #155EEF → #00B8A9
+   ============================================ */
+
+@theme {
+    --color-semizzy-blue: #155EEF;
+    --color-semizzy-teal: #00B8A9;
+    --color-semizzy-navy: #071A33;
+    --color-semizzy-white: #F8FAFC;
+    --color-semizzy-gray: #64748B;
+    --color-semizzy-blue-light: #3B82F6;
+    --color-semizzy-teal-light: #14D8C6;
+    --color-semizzy-navy-light: #1E3A5F;
+}
+
+/* Base styles */
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #F8FAFC;
+    color: #071A33;
+}
+
+/* SEMIZZY Gradient */
+.bg-semizzy-gradient {
+    background: linear-gradient(135deg, #155EEF 0%, #00B8A9 100%);
+}
+
+.text-semizzy-gradient {
+    background: linear-gradient(135deg, #155EEF 0%, #00B8A9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Offline indicator */
+.offline-banner {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}

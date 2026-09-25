@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEMIZZY ONE — Offline</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #071A33;
+            color: #F8FAFC;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .container { text-align: center; max-width: 400px; }
+        .logo {
+            width: 80px; height: 80px;
+            background: linear-gradient(135deg, #155EEF, #00B8A9);
+            border-radius: 1rem;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 2rem;
+        }
+        .logo span { color: white; font-size: 1.5rem; font-weight: bold; }
+        h1 { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .tagline { color: #64748B; margin-bottom: 2rem; }
+        .card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 2rem;
+        }
+        .icon-box {
+            width: 64px; height: 64px;
+            background: rgba(239,68,68,0.2);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+        .icon-box svg { width: 32px; height: 32px; color: #f87171; }
+        h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .desc { color: #d1d5db; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .note { color: #9ca3af; font-size: 0.8rem; margin-bottom: 1.5rem; }
+        .status { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .dot { width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: pulse 2s infinite; }
+        .status-text { color: #f87171; font-size: 0.875rem; font-weight: 500; }
+        .btn {
+            width: 100%;
+            background: linear-gradient(135deg, #155EEF, #00B8A9);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .footer { color: #4b5563; font-size: 0.75rem; margin-top: 2rem; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo"><span>S1</span></div>
+        <h1>SEMIZZY ONE</h1>
+        <p class="tagline">Everything You Need. One Platform.</p>
+
+        <div class="card">
+            <div class="icon-box">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m-2.829-2.829a5 5 0 000-7.07m-4.243 2.122a1.5 1.5 0 112.121 2.121 1.5 1.5 0 01-2.121-2.121z"/>
+                    <line x1="1" y1="1" x2="23" y2="23" stroke-width="2"/>
+                </svg>
+            </div>
+            <h2>You're Currently Offline</h2>
+            <p class="desc">Your internet connection is unavailable.</p>
+            <p class="note">Cached features remain available where supported.</p>
+            <div class="status">
+                <span class="dot"></span>
+                <span class="status-text">OFFLINE</span>
+            </div>
+            <button class="btn" onclick="window.location.reload()">Try Again</button>
+        </div>
+
+        <p class="footer">© 2026 SEMIZZY WEBMASTER. All rights reserved.</p>
+    </div>
+
+    <script>
+        // Auto-reload when back online
+        window.addEventListener('online', () => {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>
