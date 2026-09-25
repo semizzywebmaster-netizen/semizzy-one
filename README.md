@@ -1,58 +1,268 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SEMIZZY ONE CORE v2.0.0
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Everything You Need. One Platform.**
 
-## About Laravel
+SEMIZZY ONE is an integrated web platform built with Laravel 13, React 19, TypeScript, and MySQL. It is designed as a core foundation with an addon engine for future business features.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Technology Stack
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Component | Version |
+|-----------|---------|
+| PHP | 8.4.26 |
+| Laravel | 13.33.0 |
+| React | 19.x |
+| TypeScript | 5.x |
+| Vite | 8.3.1 |
+| Tailwind CSS | 4.x |
+| MySQL | 8.0+ (MariaDB 11.8 tested) |
+| Sanctum | 4.3 |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Quick Start
 
-## Learning Laravel
+### Requirements
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- PHP 8.2+ with extensions: bcmath, ctype, curl, dom, fileinfo, json, mbstring, openssl, pdo_mysql, tokenizer, xml, zip, gd, intl
+- MySQL 8.0+ or MariaDB 10.6+
+- Composer 2.x
+- Node.js 20+ & npm
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### Installation
 
 ```bash
-composer require laravel/boost --dev
+# Clone repository
+git clone <repository-url> semizzy-one
+cd semizzy-one
 
-php artisan boost:install
+# Install PHP dependencies
+composer install
+
+# Install Node dependencies
+npm install
+
+# Configure environment
+cp .env.example .env
+php artisan key:generate
+
+# Edit .env with your MySQL credentials
+# DB_CONNECTION=mysql
+# DB_HOST=127.0.0.1
+# DB_PORT=3306
+# DB_DATABASE=semizzy_one
+# DB_USERNAME=your_username
+# DB_PASSWORD=your_password
+
+# Run migrations and seed
+php artisan migrate --seed
+
+# Build frontend
+npm run build
+
+# Create storage link
+php artisan storage:link
+
+# Start development server
+php artisan serve
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### Default Admin Login
 
-## Contributing
+- **Email:** admin@semizzy.com
+- **Password:** admin123
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+⚠️ **Change this password immediately in production!**
 
-## Code of Conduct
+## Project Structure
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```
+semizzy-one/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Admin/          # Admin panel controllers
+│   │   │   ├── Api/V1/         # REST API controllers
+│   │   │   └── Auth/           # Authentication controllers
+│   │   └── Middleware/          # Custom middleware
+│   ├── Models/                  # Eloquent models
+│   ├── Providers/               # Service providers
+│   └── Services/                # Business services
+├── addons/                      # Addon packages
+│   └── example-addon/           # Sample addon
+├── database/
+│   ├── migrations/              # MySQL migrations
+│   └── seeders/                 # Database seeders
+├── public/
+│   ├── manifest.webmanifest     # PWA manifest
+│   ├── sw.js                    # Service worker
+│   └── offline.html             # Offline fallback page
+├── resources/
+│   ├── css/                     # Tailwind CSS
+│   ├── js/                      # React + TypeScript
+│   │   ├── components/          # React components
+│   │   ├── hooks/               # Custom hooks
+│   │   ├── lib/                 # Utilities
+│   │   ├── stores/              # State stores
+│   │   └── types/               # TypeScript types
+│   └── views/                   # Blade templates
+├── routes/
+│   ├── web.php                  # Web routes
+│   ├── api.php                  # API routes
+│   └── console.php              # Artisan commands
+└── tests/
+    ├── Feature/                 # Feature tests
+    └── Unit/                    # Unit tests
+```
 
-## Security Vulnerabilities
+## Core Features
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Authentication
+- Registration, login, logout
+- Rate limiting (5 attempts, 15-minute lockout)
+- Session management
+- Password reset architecture
+- 2FA architecture (ready)
+- Audit logging on all auth events
+
+### RBAC (Role-Based Access Control)
+- Roles: Admin, Staff, Support, User
+- 30 granular permissions across 10 modules
+- Per-user permission overrides
+- No super admin bypass — all access is explicit
+
+### Admin Dashboard
+- System status (PHP, Laravel, MySQL, storage, cache, queue)
+- User management (CRUD, role assignment, status management)
+- Role & permission management
+- Settings management (app, security, notifications, PWA, brand)
+- Addon management (install, activate, deactivate, uninstall)
+- Provider management
+- Audit log viewer
+- Security overview
+- System health checks
+- Backup management
+
+### API Foundation (`/api/v1/`)
+- Sanctum token authentication
+- Standard JSON response format
+- Request validation
+- Rate limiting
+- Request ID tracking
+
+### Addon Engine
+- Auto-discovery from `addons/` directory
+- Manifest validation (`addon.json`)
+- Full lifecycle: install → activate → deactivate → uninstall
+- Permission registration
+- Settings registration
+- Migration support
+- Service provider auto-registration
+
+### PWA (Progressive Web App)
+- Web manifest with icons
+- Service worker with cache-first strategy for assets
+- Network-first for API calls
+- Offline fallback page
+- Online/offline detection
+- Background sync support
+- Push notification architecture
+
+### Security
+- CSRF protection
+- XSS protection (content security headers)
+- SQL injection protection (Eloquent ORM + parameterized queries)
+- Rate limiting on login
+- Secure password hashing (bcrypt)
+- Encrypted credentials storage
+- Mass assignment protection
+- Path traversal protection
+- Debug mode protection
+
+## cPanel Deployment
+
+1. Upload project to server
+2. Set document root to `public/`
+3. Set PHP version to 8.2+
+4. Create MySQL database and user in cPanel
+5. Configure `.env` with database credentials
+6. Run `composer install --no-dev`
+7. Run `npm install && npm run build`
+8. Run `php artisan migrate --seed`
+9. Run `php artisan storage:link`
+10. Set permissions: `storage/` and `bootstrap/cache/` writable
+11. Configure cron: `* * * * * php artisan schedule:run >> /dev/null 2>&1`
+
+### Apache `.htaccess`
+
+Included in `public/.htaccess` with:
+- URL rewriting for Laravel
+- Security headers
+- Sensitive file protection
+- Directory listing disabled
+
+## Testing
+
+```bash
+# Run all tests against MySQL
+php artisan test
+
+# Run specific test suite
+php artisan test --testsuite=Feature
+php artisan test --testsuite=Unit
+
+# TypeScript check
+npx tsc --noEmit
+
+# Production build
+npm run build
+```
+
+## Cron Configuration
+
+Add to cPanel cron:
+```
+* * * * * cd /path/to/semizzy-one && php artisan schedule:run >> /dev/null 2>&1
+```
+
+## Queue Processing (Shared Hosting)
+
+Process queues via cron (no Supervisor needed):
+```
+* * * * * cd /path/to/semizzy-one && php artisan queue:work --stop-when-empty --max-time=60
+```
+
+## Addon Development
+
+Create an addon in `addons/your-addon/`:
+
+```
+addons/your-addon/
+├── addon.json           # Manifest
+├── src/
+│   └── YourAddonServiceProvider.php
+├── routes/
+├── migrations/
+├── resources/
+├── config/
+└── tests/
+```
+
+See `addons/example-addon/` for a complete working example.
+
+## Brand Colors
+
+| Color | Hex |
+|-------|-----|
+| Primary Blue | #155EEF |
+| Teal | #00B8A9 |
+| Navy | #071A33 |
+| White | #F8FAFC |
+| Gray | #64748B |
+
+## Contact
+
+**SEMIZZY WEBMASTER**
+- Phone/WhatsApp: 08112464226, 08162476945
+- Email: semizzywebmaster@gmail.com
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Proprietary — SEMIZZY WEBMASTER. All rights reserved.
