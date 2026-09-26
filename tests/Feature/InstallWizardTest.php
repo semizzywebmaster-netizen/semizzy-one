@@ -481,4 +481,45 @@ class InstallWizardTest extends TestCase
             File::delete(base_path('bootstrap/cache/config.php'));
         }
     }
+
+    /**
+     * Regression: React must mount into the #network-status island, never #app.
+     *
+     * #app holds @yield('content') - the entire server-rendered page.
+     * createRoot().render() discards every existing child of its target, so
+     * mounting into #app replaced the login form, sidebar and all other Blade
+     * content with <NetworkStatusBar />, which returns null while the browser
+     * is online. The result was a blank white page the moment the bundle
+     * finished loading, with no error message - the HTML rendered fine, then
+     * the JS wiped it.
+     */
+    public function test_react_mounts_into_the_network_status_island_not_app(): void
+    {
+        $entry = file_get_contents(base_path('resources/js/app.tsx'));
+        $this->assertNotFalse($entry, 'resources/js/app.tsx must be readable');
+
+        $this->assertStringContainsString(
+            "getElementById('network-status')",
+            $entry,
+            'React must mount into the #network-status island'
+        );
+
+        $this->assertStringNotContainsString(
+            "getElementById('app')",
+            $entry,
+            'React must never mount into #app: createRoot() discards every server-rendered child of its target'
+        );
+
+        $this->assertStringNotContainsString(
+            'Root element #app not found',
+            $entry,
+            'A missing mount point must not throw, or it also kills the service-worker registration below'
+        );
+
+        // The layout must actually provide the island, and keep page content in #app.
+        $layout = file_get_contents(base_path('resources/views/layouts/app.blade.php'));
+        $this->assertStringContainsString('id="network-status"', $layout, 'layout must provide the island');
+        $this->assertStringContainsString('id="app"', $layout, 'layout must keep the page wrapper');
+        $this->assertStringContainsString("@yield('content')", $layout, 'page content must live inside #app');
+    }
 }
