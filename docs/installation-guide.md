@@ -693,6 +693,19 @@ mysql -u your_username -p -h localhost your_database
 
 ### Routes Return 404
 
+**If new routes 404 after a `git pull`, this is almost always a stale route
+cache.** Once `bootstrap/cache/routes-*.php` exists, Laravel serves routes
+exclusively from that file and **ignores `routes/web.php` entirely**. Fix it:
+
+```bash
+php artisan route:clear
+```
+
+The installer deliberately does **not** run `route:cache`, so this should not
+recur. If you cached routes manually, always run `route:clear` after pulling.
+
+Other causes:
+
 ```bash
 # Ensure mod_rewrite is enabled
 sudo a2enmod rewrite
@@ -702,6 +715,14 @@ sudo systemctl restart apache2
 ls -la public/.htaccess
 
 # Ensure AllowOverride All in Apache config
+```
+
+**After every `git pull` that changes routes or config, run:**
+
+```bash
+php artisan route:clear
+php artisan config:clear
+php artisan view:clear
 ```
 
 ### Frontend Assets Not Loading

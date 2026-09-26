@@ -608,11 +608,23 @@ class InstallController extends Controller
             }
 
             // 7. Production caches
+            //
+            // Clear first: a previous install (or an older build) may have left
+            // a cached route table that no longer matches routes/web.php, which
+            // would make newly added routes return 404 until manually cleared.
             if ($request->app_env === 'production') {
+                Artisan::call('route:clear');
+                Artisan::call('view:clear');
                 Artisan::call('config:cache');
-                Artisan::call('route:cache');
                 Artisan::call('view:cache');
             }
+
+            // NOTE: route:cache is deliberately NOT run here. Once a route cache
+            // file exists, Laravel serves routes exclusively from it and ignores
+            // routes/web.php entirely, so every future "git pull" that adds or
+            // changes a route would 404 until someone runs "route:clear". The
+            // route table for this application is small enough that caching it
+            // is not worth the deployment footgun.
 
             // 8. Mark installed (§30 "prevent unauthorized re-running")
             File::put(storage_path('app/.installed'), json_encode([

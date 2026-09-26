@@ -457,6 +457,29 @@
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token(), 'Accept': 'application/json' },
             body: JSON.stringify(body || {})
         }).then(function (r) {
+            if (r.status === 404) {
+                throw new Error(
+                    'Route not found (404): ' + url + '. ' +
+                    'This almost always means a stale route cache. Run: php artisan route:clear'
+                );
+            }
+            if (r.status === 403) {
+                throw new Error(
+                    'Access denied (403). The installer may already be marked as installed. ' +
+                    'Delete storage/app/.installed to re-run it.'
+                );
+            }
+            if (r.status === 419) {
+                throw new Error(
+                    'CSRF token mismatch (419). Reload the page and try again.'
+                );
+            }
+            if (r.status >= 500) {
+                throw new Error(
+                    'Server error (HTTP ' + r.status + '). Check storage/logs/laravel.log ' +
+                    'and confirm vendor/ is installed (composer install).'
+                );
+            }
             return r.json().catch(function () {
                 throw new Error('Server returned a non-JSON response (HTTP ' + r.status + ').');
             });
