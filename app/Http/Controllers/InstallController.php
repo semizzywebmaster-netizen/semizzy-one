@@ -228,11 +228,20 @@ class InstallController extends Controller
             'app_env'  => 'required|in:local,production',
         ]);
 
-        $appKey = config('app.key');
+        // Resolve the encryption key.
+        //
+        // CRITICAL: do NOT call Artisan key:generate and then re-read
+        // config('app.key'). The config repository was resolved when the
+        // application booted - BEFORE .env was rewritten - so the re-read
+        // returns the previous (empty) value. Writing that empty value back to
+        // .env and then caching the config bakes an empty key in, after which
+        // every page returns HTTP 500 "No application encryption key has been
+        // specified". Generate the key in-process instead so the value we
+        // persist is always the value we hold.
+        $appKey = (string) config('app.key');
 
-        if (empty($appKey)) {
-            Artisan::call('key:generate', ['--force' => true]);
-            $appKey = config('app.key');
+        if ($appKey === '' || $appKey === 'base64:') {
+            $appKey = 'base64:' . base64_encode(random_bytes(32));
         }
 
         $this->updateEnv([
@@ -617,7 +626,19 @@ class InstallController extends Controller
             $manifestDetail = $manifestOk ? 'valid, ' . count($decoded['icons']) . ' icons' : 'invalid JSON or missing fields';
         }
 
+        // The frontend build. Without public/build/manifest.json every page that
+        // extends layouts/app.blade.php throws ViteManifestNotFoundException and
+        // returns a blank HTTP 500, so this must be caught here rather than
+        // discovered after the installer has already reported success.
+        $buildDir = public_path('build');
+        $buildManifest = $buildDir.'/manifest.json';
+        $buildOk = File::exists($buildManifest);
+        $buildDetail = $buildOk
+            ? 'manifest.json present'
+            : 'MISSING - run: npm install --legacy-peer-deps && npm run build';
+
         $checks = [
+            ['label' => 'Frontend build present', 'passed' => $buildOk, 'detail' => $buildDetail],
             ['label' => 'manifest.webmanifest present & valid', 'passed' => $manifestOk, 'detail' => $manifestDetail],
             ['label' => 'Service worker present', 'passed' => File::exists($sw), 'detail' => File::exists($sw) ? 'sw.js' : 'missing'],
             ['label' => 'Offline fallback page present', 'passed' => File::exists($offline), 'detail' => File::exists($offline) ? 'offline.html' : 'missing'],
@@ -641,7 +662,33 @@ class InstallController extends Controller
         $https = $request->isSecure() || $request->header('X-Forwarded-Proto') === 'https';
         $htaccess = File::exists(public_path('.htaccess'));
 
+        // Laravel's LoadEnvironmentVariables loads .env.{APP_ENV} ON TOP of .env
+        // when APP_ENV is set. A stray template file such as .env.production
+        // (typically containing APP_KEY= and APP_URL=https://yourdomain.com)
+        // therefore silently clobbers the real values, and the subsequent
+        // config:cache bakes the broken values in - after which every page
+        // returns HTTP 500 "No application encryption key has been specified".
+        $strayEnv = null;
+        foreach (['production', 'local', 'testing', 'staging'] as $candidate) {
+            $path = base_path('.env.' . $candidate);
+            if (File::exists($path) && $candidate !== $appEnv) {
+                $strayEnv = $path;
+                break;
+            }
+        }
+        if (!$strayEnv && $appEnv !== 'production') {
+            // Also catch .env.production while installing as production.
+            $path = base_path('.env.production');
+            if (File::exists($path)) {
+                $strayEnv = $path;
+            }
+        }
+
         $checks = [
+            ['label' => 'No stray .env.{APP_ENV} file', 'passed' => $strayEnv === null,
+             'detail' => $strayEnv === null
+                ? 'none found'
+                : basename($strayEnv) . ' overrides .env and can blank APP_KEY - delete it'],
             ['label' => 'APP_DEBUG is false', 'passed' => !$appDebug, 'detail' => $appDebug ? 'APP_DEBUG=true — disable in production' : 'APP_DEBUG=false'],
             // Advisory only: the operator chooses APP_ENV at step 5. Blocking
             // here would contradict their own choice and trap the install.
@@ -689,6 +736,8 @@ class InstallController extends Controller
         ]);
 
         try {
+
+            $postInstall = [];
             $db = $request->only(['db_host', 'db_port', 'db_database', 'db_username', 'db_password']);
 
             // 1. Persist final .env
@@ -757,17 +806,69 @@ class InstallController extends Controller
             // a cached route table that no longer matches routes/web.php, which
             // would make newly added routes return 404 until manually cleared.
             if ($request->app_env === 'production') {
-                // Each call is individually guarded. Migrations and seeding have
-                // already run by this point, so an unguarded failure here would
-                // leave a half-installed application with no .installed marker
-                // and no way to re-run the wizard. A cache that could not be
-                // built is a performance detail, not a reason to abort.
-                $cacheNotes = [];
+                // STEP 1 - neutralise any stray .env.{APP_ENV} file FIRST.
+                //
+                // Laravel's LoadEnvironmentVariables loads .env.{APP_ENV} ON TOP
+                // of .env whenever APP_ENV is set. A leftover template such as
+                // .env.production (typically APP_KEY= and
+                // APP_URL=https://yourdomain.com) therefore overrides the values
+                // this wizard just wrote. Repairing .env alone is not enough: the
+                // stray file blanks APP_KEY again on the next request, and
+                // config:cache bakes it in - bricking every page with "No
+                // application encryption key has been specified".
+                //
+                // This must run BEFORE config:cache, not after, or the poisoned
+                // value is already baked in by the time we notice.
+                //
+                // Rename rather than delete so the operator's file is preserved.
+                foreach (['production', 'local', 'testing', 'staging'] as $candidate) {
+                    $stray = base_path('.env.' . $candidate);
+                    if (!File::exists($stray)) {
+                        continue;
+                    }
+                    if (File::exists(base_path('.env')) && realpath($stray) === realpath(base_path('.env'))) {
+                        continue;
+                    }
+                    try {
+                        File::move($stray, $stray . '.disabled');
+                        $postInstall[] = basename($stray) . ' was overriding .env (Laravel loads '
+                            . '.env.{APP_ENV} on top of .env) and could blank APP_KEY. '
+                            . 'It has been renamed to ' . basename($stray) . '.disabled';
+                    } catch (\Throwable $e) {
+                        $postInstall[] = 'Delete ' . basename($stray) . ' manually: it overrides .env '
+                            . 'and can blank APP_KEY, which makes every page return HTTP 500';
+                    }
+                }
+
+                // STEP 2 - guarantee a usable key now that nothing can clobber it.
+                $keyNow = (string) config('app.key');
+                if ($keyNow === '' || $keyNow === 'base64:') {
+                    $keyNow = 'base64:' . base64_encode(random_bytes(32));
+                    $this->updateEnv(['APP_KEY' => $keyNow]);
+                    config(['app.key' => $keyNow]);
+                }
+
+                // STEP 3 - build the caches. Each call is individually guarded:
+                // migrations and seeding have already run, so an unguarded
+                // failure here would leave a half-installed application with no
+                // .installed marker and no way to re-run the wizard.
                 foreach (['route:clear', 'view:clear', 'config:cache', 'view:cache'] as $cmd) {
                     try {
                         Artisan::call($cmd);
                     } catch (\Throwable $e) {
-                        $cacheNotes[] = $cmd . ' failed: ' . $e->getMessage();
+                        // A cache that could not be built is never fatal.
+                    }
+                }
+
+                // STEP 4 - self-verify. Never leave a cached config that cannot
+                // boot: read back what was actually written to disk.
+                $cachedConfig = base_path('bootstrap/cache/config.php');
+                if (File::exists($cachedConfig)) {
+                    $baked = require $cachedConfig;
+                    if (empty($baked['app']['key'])) {
+                        File::delete($cachedConfig);
+                        $postInstall[] = 'Cached config had an empty APP_KEY. The cache was '
+                            . 'discarded - run: php artisan config:cache';
                     }
                 }
             }
@@ -779,7 +880,21 @@ class InstallController extends Controller
             // route table for this application is small enough that caching it
             // is not worth the deployment footgun.
 
-            // 8. Mark installed (§30 "prevent unauthorized re-running")
+            // 8. Final safety net. Never report a successful install while the
+            //    site is actually broken. The frontend build is the one
+            //    prerequisite the wizard cannot create for the operator.
+            if ((string) config('app.key') === '' || config('app.key') === 'base64:') {
+                $postInstall[] = 'APP_KEY is empty. Run: php artisan key:generate --force';
+            }
+            if (!File::exists(public_path('build/manifest.json'))) {
+                $postInstall[] = 'Frontend assets are not built. Every page will return HTTP 500 '
+                    . 'until you run: npm install --legacy-peer-deps && npm run build';
+            }
+            if (!File::exists(public_path('storage'))) {
+                $postInstall[] = 'public/storage symlink is missing. Run: php artisan storage:link';
+            }
+
+            // 9. Mark installed (§30 "prevent unauthorized re-running")
             File::put(storage_path('app/.installed'), json_encode([
                 'installed_at' => now()->toIso8601String(),
                 'version'      => '2.0.0',
@@ -788,6 +903,7 @@ class InstallController extends Controller
 
             return response()->json([
                 'success' => true,
+                'warnings' => $postInstall,
                 'message' => 'SEMIZZY ONE CORE installed successfully.',
                 'login_url' => rtrim($request->app_url, '/') . '/login',
             ]);

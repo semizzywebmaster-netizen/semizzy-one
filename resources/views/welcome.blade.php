@@ -17,7 +17,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     {{-- Vite Assets --}}
-    @vite(['resources/css/app.css', 'resources/js/app.tsx'])
+    @if (file_exists(public_path('build/manifest.json')))
+        @vite(['resources/css/app.css', 'resources/js/app.tsx'])
+    @else
+        <style>
+            .vite-missing{background:#FEF3C7;border-bottom:1px solid #F59E0B;color:#92400E;
+                font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;padding:10px 14px}
+        </style>
+    @endif
 </head>
 <body class="min-h-screen bg-[#F8FAFC] font-sans antialiased text-[#071A33]">
     <div class="min-h-screen flex flex-col items-center justify-center px-6 py-12">

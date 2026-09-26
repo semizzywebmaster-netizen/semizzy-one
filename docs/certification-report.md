@@ -180,9 +180,34 @@ Verified by code inspection (§29):
 | Mass assignment | ✅ `$fillable` on all models |
 | Path traversal | ✅ `BackupController` rejects `..` and `/` in filenames |
 | Secret protection | ✅ `.env`, `composer.*`, `package.*`, `artisan` blocked in `public/.htaccess` and git-ignored |
-| Debug protection | ✅ `APP_DEBUG=false` in `.env.production`; JSON errors for API only |
+| Debug protection | ✅ `APP_DEBUG=false` in `.env`; JSON errors for API only. No stray `.env.{APP_ENV}` file survives install — one is renamed to `.env.{APP_ENV}.disabled` **before** `config:cache` runs, so it can never clobber `APP_KEY` and get baked into the cache |
 | RBAC integrity | ✅ no `SUPER_ADMIN`, no `Gate::before()`, no `['*']`; `permission_role` has **no `user_id`** |
 | Installer re-run | ✅ `storage/app/.installed` guard on all 16 endpoints |
+
+> **Run the suite with caches cleared.** A live `bootstrap/cache/config.php`
+> (built by `config:cache`) is loaded by every test and bakes in the *live*
+> `.env` values — `SESSION_DRIVER=database`, the live `APP_KEY` — so the suite
+> fails for reasons that have nothing to do with the code under test. Always
+> `php artisan config:clear && php artisan view:clear` before `php artisan test`.
+
+### Missing-file / duplicate-file audit
+
+Audited every tracked source file for unresolved references, byte-identical
+duplicates and zero-byte files.
+
+| Check | Result |
+|---|---|
+| Blade `@extends` / `@include` / `@includeIf` targets (dot-notation resolved) | **0 missing** — 29 views resolve |
+| Byte-identical files in tracked source | **0 defects** — 8 copies of Laravel's skeleton keep-dir `.gitignore` (`*` + `!.gitignore`), which is by design |
+| Zero-byte files in tracked source | **1 found and fixed** — `public/favicon.ico` was 0 bytes while `welcome.blade.php:12` links it, so browsers received an empty icon |
+
+`public/favicon.ico` is now a valid multi-resolution (16×16 + 32×32) ICO in the
+app's `#155EEF` accent, served as `image/vnd.microsoft.icon`.
+
+> Note: the two apparent unresolved references, `content` and `page-title`, are
+> `@yield` **section** names, not view paths, and were false positives.
+
+---
 
 The §39 security test matrix (role escalation, CSRF, path traversal, mass
 assignment, SQLi, XSS, addon bypass, disabled-addon access, expired session)

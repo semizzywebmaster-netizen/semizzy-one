@@ -1,3 +1,13 @@
+@php
+    // Blade's @error below compiles to $errors->getBag(...). The bag is normally
+    // shared by the ShareErrorsFromSession middleware, but a session that never
+    // starts (blank APP_KEY, a database session backend that is not reachable)
+    // leaves $errors undefined and turns this page into an HTTP 500. Guarantee
+    // it exists so a missing bag cannot blank the site.
+    if (!isset($errors)) {
+        $errors = new \Illuminate\Support\ViewErrorBag();
+    }
+@endphp
 @extends('layouts.app')
 @section('content')
 <div class="min-h-screen flex items-center justify-center bg-[#071A33] p-4">

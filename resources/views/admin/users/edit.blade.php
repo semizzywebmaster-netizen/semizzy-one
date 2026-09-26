@@ -1,4 +1,14 @@
 @extends('layouts.app')
+@php
+    // Blade's @error compiles to $errors->getBag(...). The bag is normally shared
+    // by the ShareErrorsFromSession middleware, but any view rendered when the
+    // session never started (blank APP_KEY, an unreachable session backend) leaves
+    // $errors undefined and turns the whole page into an HTTP 500. Guarantee it
+    // exists so a missing bag can never blank the site.
+    if (!isset($errors)) {
+        $errors = new \Illuminate\Support\ViewErrorBag();
+    }
+@endphp
 @section('page-title', 'Edit User')
 
 @section('content')

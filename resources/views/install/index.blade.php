@@ -747,7 +747,18 @@
             btn.textContent = original;
             if (data.checks) { renderList(list, data.checks); }
             state.passed[step] = data.success === true;
-            setAlert(alertBox, data.success ? 'ok' : 'bad', data.message);
+
+            // finalize() can succeed while the site is still broken (typically a
+            // missing frontend build). Surface those warnings instead of letting
+            // the operator walk away from a 500-ing site.
+            var msg = data.message || '';
+            if (data.warnings && data.warnings.length) {
+                msg += '  WARNING: ' + data.warnings.join('  |  ');
+            }
+            setAlert(alertBox, data.success
+                ? (data.warnings && data.warnings.length ? 'warn' : 'ok')
+                : 'bad', msg);
+
             if (data.success && step < 16) { state.step = step + 1; render(); }
             if (data.success && step === 16) { state.step = 17; render(); }
         }).catch(function (e) {

@@ -7,6 +7,8 @@
 .env
 .env.backup
 .env.production
+.env.production.disabled
+.env.*.disabled
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
