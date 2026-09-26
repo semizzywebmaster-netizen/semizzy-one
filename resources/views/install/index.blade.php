@@ -43,18 +43,19 @@
         h2 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
         .lead { color: #94a3b8; font-size: 14px; margin-bottom: 24px; }
         .check-row {
-            display: flex; align-items: center; justify-content: space-between;
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
             padding: 12px 14px; border-radius: 10px; background: rgba(30,41,59,.5);
             border: 1px solid #1e293b; margin-bottom: 8px;
         }
-        .check-left { display: flex; align-items: center; gap: 12px; }
+        .check-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
         .icon { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
                 display: flex; align-items: center; justify-content: center; }
         .icon.ok { background: rgba(16,185,129,.2); color: #34d399; }
         .icon.bad { background: rgba(239,68,68,.2); color: #f87171; }
+        .icon.warn { background: rgba(245,158,11,.2); color: #fbbf24; }
         .icon svg { width: 14px; height: 14px; }
         .check-label { font-size: 14px; }
-        .check-detail { font-size: 12px; color: #64748b; }
+        .check-detail { font-size: 12px; color: #64748b; text-align: right; word-break: break-word; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .grid-1 { grid-column: 1 / -1; }
         .mb { margin-bottom: 16px; }
@@ -65,7 +66,7 @@
             border-radius: 8px; color: #f1f5f9; font-size: 14px; outline: none;
         }
         input:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
-        .actions { display: flex; align-items: center; justify-content: space-between; margin-top: 28px; gap: 12px; }
+        .actions { display: flex; align-items: center; justify-content: space-between; margin-top: 28px; gap: 12px; flex-wrap: wrap; }
         .btn {
             padding: 10px 22px; border: none; border-radius: 10px; font-size: 14px;
             font-weight: 500; cursor: pointer; transition: all .2s; font-family: inherit;
@@ -80,6 +81,7 @@
         .alert { margin-top: 16px; padding: 12px 14px; border-radius: 10px; font-size: 13px; }
         .alert-ok { background: rgba(16,185,129,.1); color: #34d399; border: 1px solid rgba(16,185,129,.2); }
         .alert-bad { background: rgba(239,68,68,.1); color: #f87171; border: 1px solid rgba(239,68,68,.2); }
+        .alert-warn { background: rgba(245,158,11,.1); color: #fbbf24; border: 1px solid rgba(245,158,11,.2); }
         .divider { border: none; border-top: 1px solid #1e293b; margin: 24px 0; }
         .done-icon {
             width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px;
@@ -95,9 +97,35 @@
         .foot { text-align: center; color: #475569; font-size: 12px; margin-top: 24px; }
         a { color: #34d399; text-decoration: none; }
         [hidden] { display: none !important; }
+        .req-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+        .req-summary { font-size: 13px; color: #94a3b8; }
     </style>
 </head>
 <body>
+
+@php
+    // ── Server-side requirement checks ──────────────────────────────
+    // Rendered server-side so the list is ALWAYS visible, even if the
+    // JavaScript fetch to /install/check-requirements fails.
+    $reqPhpOk    = version_compare(PHP_VERSION, '8.2.0', '>=');
+    $reqExts     = ['bcmath','ctype','curl','dom','fileinfo','json','mbstring','openssl',
+                    'pdo_mysql','tokenizer','xml','zip','gd','intl','sodium'];
+    $reqMissing  = array_values(array_diff($reqExts, get_loaded_extensions()));
+    $reqExtsOk   = empty($reqMissing);
+    $reqStorOk   = is_writable(storage_path());
+    $reqCacheOk  = is_writable(base_path('bootstrap/cache'));
+    $reqEnvOk    = file_exists(base_path('.env'));
+    $reqKeyOk    = !empty(config('app.key'));
+    $reqAllOk    = $reqPhpOk && $reqExtsOk && $reqStorOk && $reqCacheOk && $reqEnvOk && $reqKeyOk;
+    $reqRows = [
+        ['PHP version >= 8.2',            $reqPhpOk,   'PHP ' . PHP_VERSION],
+        ['Required PHP extensions',       $reqExtsOk,  $reqExtsOk ? count($reqExts) . ' loaded' : 'Missing: ' . implode(', ', $reqMissing)],
+        ['Storage directory writable',    $reqStorOk,  is_writable(storage_path()) ? 'writable' : 'not writable'],
+        ['Bootstrap cache writable',      $reqCacheOk, is_writable(base_path('bootstrap/cache')) ? 'writable' : 'not writable'],
+        ['.env file exists',              $reqEnvOk,   $reqEnvOk ? 'found' : 'not found'],
+        ['Application key (APP_KEY)',     $reqKeyOk,   $reqKeyOk ? 'set' : 'not set'],
+    ];
+@endphp
 
 <div class="wrap">
     <div class="card">
@@ -120,17 +148,48 @@
             <!-- Step 1: Requirements -->
             <section data-step="0">
                 <h2>Server Requirements</h2>
-                <p class="lead">We'll verify your server meets the minimum requirements.</p>
+                <p class="lead">Your server meets the minimum requirements.</p>
 
-                <div id="req-start" class="center" style="padding:40px 0;">
-                    <button class="btn btn-primary" data-action="checkRequirements">Run Server Check</button>
+                <div class="req-toolbar">
+                    <span class="req-summary" id="req-summary">
+                        @if($reqAllOk)
+                            All {{ count($reqRows) }} checks passed
+                        @else
+                            {{ count(array_filter($reqRows, fn($r) => !$r[1])) }} check(s) need attention
+                        @endif
+                    </span>
+                    <button class="btn btn-outline" id="req-recheck" data-action="recheck" style="padding:7px 14px; font-size:13px;">Re-check</button>
                 </div>
 
-                <div id="req-list" hidden></div>
+                <div id="req-list">
+                    @foreach($reqRows as $reqRow)
+                        <div class="check-row">
+                            <div class="check-left">
+                                <div class="icon {{ $reqRow[1] ? 'ok' : 'bad' }}">
+                                    @if($reqRow[1])
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                    @else
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    @endif
+                                </div>
+                                <span class="check-label">{{ $reqRow[0] }}</span>
+                            </div>
+                            <span class="check-detail">{{ $reqRow[2] }}</span>
+                        </div>
+                    @endforeach
+                </div>
 
-                <div class="actions" id="req-actions" hidden>
+                <div id="req-alert" class="alert {{ $reqAllOk ? 'alert-ok' : 'alert-bad' }}">
+                    @if($reqAllOk)
+                        Your server is ready. You can continue to the next step.
+                    @else
+                        Some requirements are not met. Fix the items marked in red before continuing.
+                    @endif
+                </div>
+
+                <div class="actions">
                     <span></span>
-                    <button class="btn btn-primary" id="req-continue" data-goto="1">Continue</button>
+                    <button class="btn btn-primary" id="req-continue" data-goto="1" @if(!$reqAllOk) disabled @endif>Continue</button>
                 </div>
             </section>
 
@@ -167,7 +226,7 @@
                 <div class="actions">
                     <button class="btn btn-ghost" data-goto="0">Back</button>
                     <div style="display:flex; gap:12px;">
-                        <button class="btn btn-outline" id="db-test" data-action="testDatabase">Test Connection</button>
+                        <button class="btn btn-outline" id="db-test-btn" data-action="testDatabase">Test Connection</button>
                         <button class="btn btn-primary" data-goto="2">Continue</button>
                     </div>
                 </div>
@@ -253,14 +312,7 @@
 <script>
 (function () {
     var STEPS = ['Requirements', 'Database', 'Admin', 'Done'];
-    var state = {
-        step: 0,
-        checked: false,
-        requirements: {},
-        passed: false,
-        testing: false,
-        installing: false
-    };
+    var state = { step: 0, testing: false, installing: false };
 
     function $(id) { return document.getElementById(id); }
     function el(tag, cls, html) {
@@ -289,15 +341,14 @@
             body: JSON.stringify(body)
         }).then(function (r) { return r.json(); });
     }
-    function alert(el, ok, msg) {
-        el.hidden = !msg;
-        el.className = 'alert ' + (ok ? 'alert-ok' : 'alert-bad');
-        el.textContent = msg || '';
+    function setAlert(node, kind, msg) {
+        node.hidden = !msg;
+        node.className = 'alert ' + (kind === 'ok' ? 'alert-ok' : (kind === 'warn' ? 'alert-warn' : 'alert-bad'));
+        node.textContent = msg || '';
     }
 
     /* ---------- Rendering ---------- */
     function render() {
-        // Step indicators
         var steps = $('steps');
         steps.innerHTML = '';
         STEPS.forEach(function (label, i) {
@@ -311,66 +362,85 @@
             }
         });
 
-        // Sections
         document.querySelectorAll('section[data-step]').forEach(function (s) {
             s.hidden = parseInt(s.getAttribute('data-step'), 10) !== state.step;
         });
 
-        // Requirements
-        $('req-start').hidden = state.checked;
-        $('req-list').hidden = !state.checked;
-        $('req-actions').hidden = !state.checked;
-        if (state.checked) {
-            var list = $('req-list');
-            list.innerHTML = '';
-            Object.keys(state.requirements).forEach(function (k) {
-                var c = state.requirements[k];
-                var row = el('div', 'check-row');
-                var left = el('div', 'check-left');
-                left.appendChild(el('div', 'icon ' + (c.passed ? 'ok' : 'bad')));
-                left.lastChild.innerHTML = c.passed
-                    ? '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>'
-                    : '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>';
-                left.appendChild(el('span', 'check-label', esc(c.label)));
-                row.appendChild(left);
-                row.appendChild(el('span', 'check-detail', esc(c.detail)));
-                list.appendChild(row);
-            });
-            $('req-continue').disabled = !state.passed;
-        }
-
-        // DB test button
-        var dbBtn = $('db-test');
+        var dbBtn = $('db-test-btn');
         dbBtn.disabled = state.testing;
         dbBtn.textContent = state.testing ? 'Testing...' : 'Test Connection';
 
-        // Install button
         var inBtn = $('install-btn');
         inBtn.disabled = state.installing;
         inBtn.textContent = state.installing ? 'Installing...' : 'Install SEMIZZY ONE';
     }
 
     /* ---------- Actions ---------- */
-    function checkRequirements() {
-        $('req-start').hidden = true;
-        $('req-list').hidden = false;
-        $('req-list').innerHTML = '<div class="check-row"><span class="check-detail">Checking...</span></div>';
+
+    // Re-check requirements against the live server and rebuild the list.
+    function recheck() {
+        var btn = document.querySelector('[data-action="recheck"]');
+        var list = $('req-list');
+        var summary = $('req-summary');
+        var alertBox = $('req-alert');
+        var cont = $('req-continue');
+
+        if (btn) { btn.disabled = true; btn.textContent = 'Checking...'; }
+        setAlert(alertBox, 'warn', 'Checking server requirements...');
+
         post('/install/check-requirements', {}).then(function (data) {
-            state.requirements = data;
-            state.checked = true;
-            state.passed = Object.keys(data).every(function (k) { return data[k].passed; });
-            render();
+            var keys = (data && typeof data === 'object') ? Object.keys(data) : [];
+
+            // Guard against an empty / unexpected payload — never leave a blank list.
+            if (!keys.length) {
+                setAlert(alertBox, 'warn',
+                    'Could not read the live check results. The server-side results above are still valid.');
+                if (btn) { btn.disabled = false; btn.textContent = 'Re-check'; }
+                return;
+            }
+
+            list.innerHTML = '';
+            var failed = 0;
+
+            keys.forEach(function (k) {
+                var c = data[k] || {};
+                var passed = c.passed === true;
+                if (!passed) failed++;
+
+                var row = el('div', 'check-row');
+                var left = el('div', 'check-left');
+                var icon = el('div', 'icon ' + (passed ? 'ok' : 'bad'));
+                icon.innerHTML = passed
+                    ? '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>'
+                    : '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>';
+                left.appendChild(icon);
+                left.appendChild(el('span', 'check-label', esc(c.label || k)));
+                row.appendChild(left);
+                row.appendChild(el('span', 'check-detail', esc(c.detail || '')));
+                list.appendChild(row);
+            });
+
+            var allOk = failed === 0;
+            summary.textContent = allOk
+                ? 'All ' + keys.length + ' checks passed'
+                : failed + ' check(s) need attention';
+            setAlert(alertBox, allOk ? 'ok' : 'bad', allOk
+                ? 'Your server is ready. You can continue to the next step.'
+                : 'Some requirements are not met. Fix the items marked in red before continuing.');
+            cont.disabled = !allOk;
+
+            if (btn) { btn.disabled = false; btn.textContent = 'Re-check'; }
         }).catch(function () {
-            state.requirements = { error: { label: 'Server check failed', passed: false, detail: 'Could not reach the server' } };
-            state.checked = true;
-            state.passed = false;
-            render();
+            // Network / non-JSON failure: keep the server-rendered list intact.
+            setAlert(alertBox, 'warn',
+                'Live check could not be completed. The server-side results above are still valid.');
+            if (btn) { btn.disabled = false; btn.textContent = 'Re-check'; }
         });
     }
 
     function testDatabase() {
         state.testing = true;
-        alert($('db-alert'), true, 'Testing connection...');
+        setAlert($('db-alert'), 'warn', 'Testing connection...');
         render();
         post('/install/test-database', {
             host: $('db_host').value,
@@ -380,18 +450,18 @@
             password: $('db_password').value
         }).then(function (data) {
             state.testing = false;
-            alert($('db-alert'), data.success, data.message);
+            setAlert($('db-alert'), data.success ? 'ok' : 'bad', data.message || 'No response');
             render();
         }).catch(function (e) {
             state.testing = false;
-            alert($('db-alert'), false, 'Connection failed: ' + e.message);
+            setAlert($('db-alert'), 'bad', 'Connection test failed: ' + (e && e.message ? e.message : 'unknown error'));
             render();
         });
     }
 
     function runInstall() {
         state.installing = true;
-        alert($('install-alert'), true, 'Installing, please wait...');
+        setAlert($('install-alert'), 'warn', 'Installing, please wait...');
         render();
         post('/install/run', {
             db_host: $('db_host').value,
@@ -407,24 +477,18 @@
             admin_password_confirmation: $('admin_password_confirmation').value
         }).then(function (data) {
             state.installing = false;
-            alert($('install-alert'), data.success, data.message);
-            if (data.success) {
-                state.step = 3;
-            }
+            setAlert($('install-alert'), data.success ? 'ok' : 'bad', data.message || 'No response');
+            if (data.success) { state.step = 3; }
             render();
         }).catch(function (e) {
             state.installing = false;
-            alert($('install-alert'), false, 'Installation failed: ' + e.message);
+            setAlert($('install-alert'), 'bad', 'Installation failed: ' + (e && e.message ? e.message : 'unknown error'));
             render();
         });
     }
 
     /* ---------- Wire up ---------- */
-    var ACTIONS = {
-        checkRequirements: checkRequirements,
-        testDatabase: testDatabase,
-        runInstall: runInstall
-    };
+    var ACTIONS = { recheck: recheck, testDatabase: testDatabase, runInstall: runInstall };
 
     document.querySelectorAll('[data-action]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -432,7 +496,6 @@
             if (fn) fn();
         });
     });
-
     document.querySelectorAll('[data-goto]').forEach(function (btn) {
         btn.addEventListener('click', function () {
             state.step = parseInt(btn.getAttribute('data-goto'), 10);
@@ -440,9 +503,7 @@
         });
     });
 
-    // Default the app URL to the current origin
     $('app_url').value = window.location.origin;
-
     render();
 })();
 </script>
