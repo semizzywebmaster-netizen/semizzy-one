@@ -62,13 +62,28 @@ class InstallController extends Controller
 
     private function respond(array $checks, ?string $message = null): JsonResponse
     {
-        $failed = collect($checks)->where('passed', false)->count();
+        // A check marked 'warn' is advisory: it is shown but does not block the
+        // wizard. Production hardening (SSL, APP_ENV) is the operator's call and
+        // can be applied after installation, so it must not trap them here.
+        $blocking = collect($checks)->filter(
+            static fn ($c) => $c['passed'] === false && empty($c['warn'])
+        );
+        $failed = $blocking->count();
+        $warned = collect($checks)->filter(
+            static fn ($c) => $c['passed'] === false && !empty($c['warn'])
+        )->count();
 
         return response()->json([
             'success' => $failed === 0,
             'checks'  => $checks,
             'failed'  => $failed,
-            'message' => $message ?? ($failed === 0 ? 'All checks passed.' : "{$failed} check(s) failed."),
+            'warned'  => $warned,
+            'message' => $message ?? match (true) {
+                $failed > 0 && $warned > 0 => "{$failed} check(s) failed, {$warned} warning(s).",
+                $failed > 0               => "{$failed} check(s) failed.",
+                $warned > 0               => "All required checks passed, {$warned} warning(s).",
+                default                   => 'All checks passed.',
+            },
         ]);
     }
 
@@ -517,14 +532,33 @@ class InstallController extends Controller
             return $g;
         }
 
-        $linkExists = File::exists(public_path('storage'));
+        // Create the symlink here rather than only in finalize(). This check
+        // runs at step 12 and finalize() runs at step 16, so demanding an
+        // already-existing link made this row permanently red and blocked the
+        // wizard. Creating it is idempotent and gives a real pass/fail signal.
+        $linkExists = is_link(public_path('storage'));
+        $linkDetail = $linkExists ? 'linked' : 'not linked';
+        if (!$linkExists) {
+            if (File::exists(public_path('storage'))) {
+                // Something that is not a symlink occupies the path.
+                $linkDetail = 'a non-symlink file/dir exists at public/storage - remove it';
+            } else {
+                try {
+                    Artisan::call('storage:link');
+                    $linkExists = is_link(public_path('storage'));
+                    $linkDetail = $linkExists ? 'created' : 'could not be created';
+                } catch (\Throwable $e) {
+                    $linkDetail = 'could not be created: ' . $e->getMessage();
+                }
+            }
+        }
 
         $checks = [
             ['label' => 'storage/ writable', 'passed' => is_writable(storage_path()), 'detail' => storage_path()],
             ['label' => 'storage/framework writable', 'passed' => is_writable(storage_path('framework')), 'detail' => storage_path('framework')],
             ['label' => 'storage/logs writable', 'passed' => is_writable(storage_path('logs')), 'detail' => storage_path('logs')],
             ['label' => 'storage/app writable', 'passed' => is_writable(storage_path('app')), 'detail' => storage_path('app')],
-            ['label' => 'public/storage symlink', 'passed' => $linkExists, 'detail' => $linkExists ? 'linked' : 'will be created during finalization'],
+            ['label' => 'public/storage symlink', 'passed' => $linkExists, 'detail' => $linkDetail],
         ];
 
         return $this->respond($checks);
@@ -609,11 +643,16 @@ class InstallController extends Controller
 
         $checks = [
             ['label' => 'APP_DEBUG is false', 'passed' => !$appDebug, 'detail' => $appDebug ? 'APP_DEBUG=true — disable in production' : 'APP_DEBUG=false'],
-            ['label' => 'APP_ENV is production', 'passed' => $appEnv === 'production', 'detail' => 'APP_ENV=' . $appEnv],
+            // Advisory only: the operator chooses APP_ENV at step 5. Blocking
+            // here would contradict their own choice and trap the install.
+            ['label' => 'APP_ENV is production', 'passed' => $appEnv === 'production', 'warn' => true, 'detail' => 'APP_ENV=' . $appEnv . ($appEnv === 'production' ? '' : ' - set to production when you go live')],
             ['label' => '.env is git-ignored', 'passed' => $this->isGitIgnored('.env'), 'detail' => $this->isGitIgnored('.env') ? 'ignored' : 'NOT ignored — fix .gitignore'],
             ['label' => 'Document root .htaccess present', 'passed' => $htaccess, 'detail' => $htaccess ? 'public/.htaccess' : 'missing'],
             ['label' => 'Sensitive files blocked from web', 'passed' => $this->sensitiveFilesBlocked(), 'detail' => '.env, composer.*, artisan blocked'],
-            ['label' => 'HTTPS in use', 'passed' => $https, 'detail' => $https ? 'secure' : 'enable an SSL certificate'],
+            // Advisory only. isSecure() is false behind many cPanel proxies and
+            // load balancers even on real HTTPS sites, and SSL can be enabled
+            // (cPanel AutoSSL) after installation.
+            ['label' => 'HTTPS in use', 'passed' => $https, 'warn' => true, 'detail' => $https ? 'secure' : 'enable an SSL certificate (can be done after install)'],
             ['label' => 'Password hashing configured', 'passed' => config('hashing.driver') !== null, 'detail' => 'driver: ' . config('hashing.driver', 'bcrypt')],
         ];
 
@@ -718,10 +757,19 @@ class InstallController extends Controller
             // a cached route table that no longer matches routes/web.php, which
             // would make newly added routes return 404 until manually cleared.
             if ($request->app_env === 'production') {
-                Artisan::call('route:clear');
-                Artisan::call('view:clear');
-                Artisan::call('config:cache');
-                Artisan::call('view:cache');
+                // Each call is individually guarded. Migrations and seeding have
+                // already run by this point, so an unguarded failure here would
+                // leave a half-installed application with no .installed marker
+                // and no way to re-run the wizard. A cache that could not be
+                // built is a performance detail, not a reason to abort.
+                $cacheNotes = [];
+                foreach (['route:clear', 'view:clear', 'config:cache', 'view:cache'] as $cmd) {
+                    try {
+                        Artisan::call($cmd);
+                    } catch (\Throwable $e) {
+                        $cacheNotes[] = $cmd . ' failed: ' . $e->getMessage();
+                    }
+                }
             }
 
             // NOTE: route:cache is deliberately NOT run here. Once a route cache

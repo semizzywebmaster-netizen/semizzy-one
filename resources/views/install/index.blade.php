@@ -44,6 +44,7 @@
                 display: flex; align-items: center; justify-content: center; }
         .icon.ok { background: rgba(16,185,129,.2); color: #34d399; }
         .icon.bad { background: rgba(239,68,68,.2); color: #f87171; }
+        .icon.warn { background: rgba(245,158,11,.2); color: #fbbf24; }
         .icon svg { width: 13px; height: 13px; }
         .check-label { font-size: 13px; }
         .check-detail { font-size: 11px; color: #64748b; text-align: right; word-break: break-word; }
@@ -534,10 +535,14 @@
         checks.forEach(function (c) {
             var row = el('div', 'check-row');
             var left = el('div', 'check-left');
-            var icon = el('div', 'icon ' + (c.passed ? 'ok' : 'bad'));
+            // 'warn' checks are advisory: shown amber, not red.
+            var state_ = c.passed ? 'ok' : (c.warn ? 'warn' : 'bad');
+            var icon = el('div', 'icon ' + state_);
             icon.innerHTML = c.passed
                 ? '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>'
-                : '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>';
+                : state_ === 'warn'
+                    ? '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>'
+                    : '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>';
             left.appendChild(icon);
             left.appendChild(el('span', 'check-label', esc(c.label)));
             row.appendChild(left);
@@ -658,7 +663,7 @@
         var btn = $('charset-btn');
         if (!btn) { return; }
         var failed = (checks || []).some(function (c) {
-            return !c.passed && /charset|utf8/i.test(c.label + ' ' + (c.detail || ''));
+            return !c.passed && !c.warn && /charset|utf8/i.test(c.label + ' ' + (c.detail || ''));
         });
         btn.hidden = !failed;
     }
