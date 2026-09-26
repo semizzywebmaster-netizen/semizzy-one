@@ -477,6 +477,27 @@
                     'Delete storage/app/.installed to re-run it.'
                 );
             }
+            if (r.status === 422) {
+                // Use the two-argument form of then(). A .catch() chained after
+                // this .then() would also swallow the error thrown inside it and
+                // replace the useful message with the generic fallback.
+                return r.json().then(
+                    function (data) {
+                        var fields = data && data.errors
+                            ? Object.keys(data.errors)
+                            : [];
+                        throw new Error(
+                            (data && data.message ? data.message : 'Validation failed.') +
+                            (fields.length
+                                ? ' Check these fields: ' + fields.join(', ')
+                                : '')
+                        );
+                    },
+                    function () {
+                        throw new Error('Validation failed (HTTP 422). Check the fields on this step.');
+                    }
+                );
+            }
             if (r.status === 419) {
                 throw new Error(
                     'CSRF token mismatch (419). Reload the page and try again.'
@@ -600,17 +621,22 @@
         setAlert(alertBox, 'warn', 'Running checks...');
         renderList(list, null);
 
-        request(url, {}).then(function (data) {
+        // Send the form: step 7 (Validate Database) requires the db_* fields
+        // entered on step 6. An empty body made it fail validation with 422,
+        // which surfaced as an empty check list plus a validation message.
+        // The other check steps ignore request input, so sending it is safe.
+        request(url, form()).then(function (data) {
             btn.disabled = false;
             btn.textContent = 'Run Check';
-            renderList(list, data.checks || []);
+            if (data.checks) { renderList(list, data.checks); }
+            else { list.innerHTML = ''; }
             state.passed[step] = data.success === true;
             setAlert(alertBox, data.success ? 'ok' : 'bad', data.message);
             syncContinue();
         }).catch(function (e) {
             btn.disabled = false;
             btn.textContent = 'Run Check';
-            renderList(list, []);
+            list.innerHTML = '';
             state.passed[step] = false;
             setAlert(alertBox, 'bad', e.message);
             syncContinue();
