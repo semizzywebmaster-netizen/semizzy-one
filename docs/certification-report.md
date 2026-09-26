@@ -351,18 +351,16 @@ See `addons/example-addon/` for a working reference.
    All PHP verification is static analysis.
 2. **Phases 30–33 are not done** — no fresh shared-hosting install, no offline
    stress testing, no forensic audit, no certification.
-3. **`AGENTS.md` and `CLAUDE.md` are byte-identical duplicates.** Left in place
-   on the assumption they serve different tools.
-4. **Notifications** — in-app architecture and adapters exist; no delivery
+3. **Notifications** — in-app architecture and adapters exist; no delivery
    provider is wired (correct per the core-first principle).
-5. **2FA / OTP / email verification** — architecture and columns exist; the
+4. **2FA / OTP / email verification** — architecture and columns exist; the
    flows are not fully implemented end-to-end.
-6. **Support foundation** is notification-backed only; no ticketing system
+5. **Support foundation** is notification-backed only; no ticketing system
    (business scope).
-7. **Install wizard is stateless** — if the user navigates away mid-install,
+6. **Install wizard is stateless** — if the user navigates away mid-install,
    entered data is lost. Deliberate: it avoids depending on a session table
    that does not exist yet on a fresh install.
-8. **`date_format`** is validated and persisted but not consumed by the UI yet.
+7. **`date_format`** is validated and persisted but not consumed by the UI yet.
 
 ---
 
