@@ -147,11 +147,31 @@ class InstallController extends Controller
         $loaded = get_loaded_extensions();
         $missing = array_values(array_diff(self::REQUIRED_EXTENSIONS, $loaded));
 
+        // Functions this application cannot run without. disable_functions only
+        // matters when it removes one of these - a host may safely disable
+        // exec, system and friends without affecting the installer.
+        $requiredFunctions = [
+            'symlink', 'parse_ini_file', 'putenv', 'getenv', 'mail',
+            'file_put_contents', 'file_get_contents', 'is_writable',
+            'scandir', 'mkdir', 'realpath', 'ini_set', 'ini_get',
+        ];
+        $disabledFunctions = array_values(array_filter(
+            array_map('trim', explode(',', (string) ini_get('disable_functions'))),
+            static fn ($f) => $f !== ''
+        ));
+        $blockedFunctions = array_values(array_intersect($requiredFunctions, $disabledFunctions));
+
         $checks = [
             ['label' => 'PHP version >= 8.3', 'passed' => version_compare(PHP_VERSION, '8.3.0', '>='), 'detail' => 'PHP ' . PHP_VERSION],
             ['label' => 'PHP version < 8.6', 'passed' => version_compare(PHP_VERSION, '8.6.0', '<'), 'detail' => 'PHP ' . PHP_VERSION],
             ['label' => 'Required PHP extensions', 'passed' => empty($missing), 'detail' => empty($missing) ? count(self::REQUIRED_EXTENSIONS) . ' loaded' : 'Missing: ' . implode(', ', $missing)],
-            ['label' => 'Extensions are not disabled by ini', 'passed' => !in_array('disable_functions', array_keys((array) ini_get_all()), true), 'detail' => 'disable_functions: ' . (ini_get('disable_functions') ?: 'none')],
+            ['label' => 'Required functions not disabled',
+             'passed' => empty($blockedFunctions),
+             'detail' => empty($blockedFunctions)
+                ? (empty($disabledFunctions)
+                    ? 'disable_functions: none'
+                    : count($disabledFunctions) . ' disabled, none required by this app')
+                : 'Disabled: ' . implode(', ', $blockedFunctions)],
         ];
 
         return $this->respond($checks);
