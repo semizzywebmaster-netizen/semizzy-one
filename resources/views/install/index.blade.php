@@ -146,6 +146,7 @@
                 <div class="actions">
                     <button class="btn btn-ghost" data-goto="1">Back</button>
                     <button class="btn btn-primary" data-action="run:2" data-url="/install/check/server">Run Check</button>
+                    <button class="btn btn-primary" data-goto="3" data-continue="2" disabled>Continue</button>
                 </div>
             </section>
 
@@ -158,6 +159,7 @@
                 <div class="actions">
                     <button class="btn btn-ghost" data-goto="2">Back</button>
                     <button class="btn btn-primary" data-action="run:3" data-url="/install/check/php">Run Check</button>
+                    <button class="btn btn-primary" data-goto="4" data-continue="3" disabled>Continue</button>
                 </div>
             </section>
 
@@ -170,6 +172,7 @@
                 <div class="actions">
                     <button class="btn btn-ghost" data-goto="3">Back</button>
                     <button class="btn btn-primary" data-action="run:4" data-url="/install/check/mysql">Run Check</button>
+                    <button class="btn btn-primary" data-goto="5" data-continue="4" disabled>Continue</button>
                 </div>
             </section>
 
@@ -251,6 +254,7 @@
                 <div class="actions">
                     <button class="btn btn-ghost" data-goto="6">Back</button>
                     <button class="btn btn-primary" data-action="run:7" data-url="/install/database/validate">Validate Database</button>
+                    <button class="btn btn-primary" data-goto="8" data-continue="7" disabled>Continue</button>
                 </div>
             </section>
 
@@ -342,6 +346,7 @@
                 <div class="actions">
                     <button class="btn btn-ghost" data-goto="11">Back</button>
                     <button class="btn btn-primary" data-action="run:12" data-url="/install/check/storage">Run Check</button>
+                    <button class="btn btn-primary" data-goto="13" data-continue="12" disabled>Continue</button>
                 </div>
             </section>
 
@@ -354,6 +359,7 @@
                 <div class="actions">
                     <button class="btn btn-ghost" data-goto="12">Back</button>
                     <button class="btn btn-primary" data-action="run:13" data-url="/install/check/cache">Run Check</button>
+                    <button class="btn btn-primary" data-goto="14" data-continue="13" disabled>Continue</button>
                 </div>
             </section>
 
@@ -366,6 +372,7 @@
                 <div class="actions">
                     <button class="btn btn-ghost" data-goto="13">Back</button>
                     <button class="btn btn-primary" data-action="run:14" data-url="/install/check/pwa">Run Check</button>
+                    <button class="btn btn-primary" data-goto="15" data-continue="14" disabled>Continue</button>
                 </div>
             </section>
 
@@ -378,6 +385,7 @@
                 <div class="actions">
                     <button class="btn btn-ghost" data-goto="14">Back</button>
                     <button class="btn btn-primary" data-action="run:15" data-url="/install/check/security">Run Check</button>
+                    <button class="btn btn-primary" data-goto="16" data-continue="15" disabled>Continue</button>
                 </div>
             </section>
 
@@ -544,6 +552,8 @@
             s.hidden = parseInt(s.getAttribute('data-step'), 10) !== state.step;
         });
 
+        syncContinue();
+
         if (state.step === 16) { renderSummary(); }
     }
 
@@ -568,6 +578,18 @@
     }
 
     /* ── actions ── */
+    /**
+     * Enable a step's Continue button only once that step has passed.
+     * Check steps (2, 3, 4, 7, 12-15) have no auto-advance: the operator must
+     * be able to read the requirement list first, then choose to continue.
+     */
+    function syncContinue() {
+        document.querySelectorAll('[data-continue]').forEach(function (btn) {
+            var step = parseInt(btn.getAttribute('data-continue'), 10);
+            btn.disabled = state.passed[step] !== true;
+        });
+    }
+
     function runCheck(btn) {
         var step = parseInt(btn.getAttribute('data-action').split(':')[1], 10);
         var url = btn.getAttribute('data-url');
@@ -584,12 +606,14 @@
             renderList(list, data.checks || []);
             state.passed[step] = data.success === true;
             setAlert(alertBox, data.success ? 'ok' : 'bad', data.message);
+            syncContinue();
         }).catch(function (e) {
             btn.disabled = false;
             btn.textContent = 'Run Check';
             renderList(list, []);
             state.passed[step] = false;
             setAlert(alertBox, 'bad', e.message);
+            syncContinue();
         });
     }
 
