@@ -30,6 +30,7 @@ Route::post('/install/environment', [InstallController::class, 'environment'])->
 // Step 6-7: MySQL connection + database validation
 Route::post('/install/database/connect', [InstallController::class, 'connectDatabase'])->name('install.database.connect');
 Route::post('/install/database/validate', [InstallController::class, 'validateDatabase'])->name('install.database.validate');
+Route::post('/install/database/charset', [InstallController::class, 'convertCharset'])->name('install.database.charset');
 
 // Step 8-9: application settings + admin account
 Route::post('/install/application', [InstallController::class, 'application'])->name('install.application');

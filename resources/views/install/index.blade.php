@@ -254,6 +254,7 @@
                 <div class="actions">
                     <button class="btn btn-ghost" data-goto="6">Back</button>
                     <button class="btn btn-primary" data-action="run:7" data-url="/install/database/validate">Validate Database</button>
+                    <button class="btn btn-outline" data-action="convert:7" data-url="/install/database/charset" id="charset-btn" hidden>Convert to utf8mb4</button>
                     <button class="btn btn-primary" data-goto="8" data-continue="7" disabled>Continue</button>
                 </div>
             </section>
@@ -504,9 +505,13 @@
                 );
             }
             if (r.status >= 500) {
-                throw new Error(
-                    'Server error (HTTP ' + r.status + '). Check storage/logs/laravel.log ' +
-                    'and confirm vendor/ is installed (composer install).'
+                var generic = 'Server error (HTTP ' + r.status + '). Check storage/logs/laravel.log ' +
+                    'and confirm vendor/ is installed (composer install).';
+                return r.json().then(
+                    function (data) {
+                        throw new Error(data && data.message ? data.message : generic);
+                    },
+                    function () { throw new Error(generic); }
                 );
             }
             return r.json().catch(function () {
@@ -633,6 +638,7 @@
             state.passed[step] = data.success === true;
             setAlert(alertBox, data.success ? 'ok' : 'bad', data.message);
             syncContinue();
+            if (step === 7) { revealCharsetFix(data.checks); }
         }).catch(function (e) {
             btn.disabled = false;
             btn.textContent = 'Run Check';
@@ -640,6 +646,52 @@
             state.passed[step] = false;
             setAlert(alertBox, 'bad', e.message);
             syncContinue();
+        });
+    }
+
+    /**
+     * Show the 'Convert to utf8mb4' button only when the charset check failed.
+     * A latin1 database is common on cPanel and is a real problem, so offer the
+     * fix instead of leaving the operator stuck on a red row.
+     */
+    function revealCharsetFix(checks) {
+        var btn = $('charset-btn');
+        if (!btn) { return; }
+        var failed = (checks || []).some(function (c) {
+            return !c.passed && /charset|utf8/i.test(c.label + ' ' + (c.detail || ''));
+        });
+        btn.hidden = !failed;
+    }
+
+    /**
+     * Convert the database to utf8mb4, then re-run validation so the operator
+     * sees the corrected result. Deliberately does NOT advance the step: the
+     * charset fix is a side quest, not progress.
+     */
+    function convertCharset(btn) {
+        var alertBox = $('alert-7');
+        btn.disabled = true;
+        var original = btn.textContent;
+        btn.textContent = 'Converting...';
+        setAlert(alertBox, 'warn', 'Converting database and tables to utf8mb4...');
+
+        request('/install/database/charset', form()).then(function (data) {
+            btn.disabled = false;
+            btn.textContent = original;
+            setAlert(alertBox, data.success ? 'ok' : 'bad', data.message);
+
+            if (data.success) {
+                // Re-validate so the updated charset is visible immediately.
+                // Call runCheck() directly rather than synthesising a click:
+                // it keeps the dependency explicit and works even if the
+                // button is mid-update.
+                var runBtn = document.querySelector('[data-action="run:7"]');
+                if (runBtn) { runCheck(runBtn); }
+            }
+        }).catch(function (e) {
+            btn.disabled = false;
+            btn.textContent = original;
+            setAlert(alertBox, 'bad', e.message);
         });
     }
 
@@ -709,6 +761,7 @@
             if (a.indexOf('run:') === 0) { runCheck(btn); }
             else if (a.indexOf('save:') === 0) { saveStep(btn); }
             else if (a.indexOf('post:') === 0) { postStep(btn); }
+            else if (a === 'convert:7') { convertCharset(btn); }
         });
     });
 

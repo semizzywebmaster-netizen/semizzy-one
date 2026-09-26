@@ -337,6 +337,65 @@ class InstallController extends Controller
         }
     }
 
+    /**
+     * Convert the database (and every table in it) to utf8mb4.
+     *
+     * cPanel creates databases with MySQL's historical default of
+     * latin1/latin1_swedish_ci, which cannot store 4-byte characters such as
+     * emoji and silently truncates them. Rather than only reporting the
+     * problem, the installer offers to fix it, because on shared hosting the
+     * operator often cannot easily drop and recreate the database.
+     */
+    public function convertCharset(Request $request): JsonResponse
+    {
+        if ($g = $this->guard()) {
+            return $g;
+        }
+
+        $request->validate([
+            'db_host'     => 'required|string',
+            'db_port'     => 'required|integer',
+            'db_database' => 'required|string',
+            'db_username' => 'required|string',
+            'db_password' => 'nullable|string',
+        ]);
+
+        try {
+            $this->applyDatabaseConfig($request->only(['db_host', 'db_port', 'db_database', 'db_username', 'db_password']));
+            DB::purge('mysql');
+
+            $database = $request->db_database;
+            $collation = 'utf8mb4_unicode_ci';
+
+            // 1. Change the database default so tables created later inherit it.
+            DB::statement("ALTER DATABASE `{$database}` CHARACTER SET utf8mb4 COLLATE {$collation}");
+
+            // 2. Convert every existing table. latin1 -> utf8mb4 is a widening
+            //    conversion: no data is lost for valid latin1 content.
+            $tables = array_map(
+                static fn ($r) => (string) (array_values((array) $r)[0] ?? ''),
+                DB::select('SHOW TABLES')
+            );
+
+            $converted = 0;
+            foreach ($tables as $table) {
+                if ($table === '') {
+                    continue;
+                }
+                DB::statement("ALTER TABLE `{$table}` CONVERT TO CHARACTER SET utf8mb4 COLLATE {$collation}");
+                $converted++;
+            }
+
+            return response()->json([
+                'success'   => true,
+                'converted' => $converted,
+                'message'   => "Database and {$converted} table(s) converted to utf8mb4. Re-run validation to confirm.",
+            ]);
+        } catch (\Exception $e) {
+            return $this->fail('Charset conversion failed: ' . $e->getMessage(), 500);
+        }
+    }
+
     // ─── Step 8: Application Settings ──────────────────────────
 
     public function application(Request $request): JsonResponse
