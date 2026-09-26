@@ -85,7 +85,33 @@ class InstallController extends Controller
             return redirect('/');
         }
 
+        // Self-heal: a previous install (or an older build of this installer)
+        // may have left a cached route table that no longer matches
+        // routes/web.php. Laravel then serves routes exclusively from
+        // bootstrap/cache/routes-*.php and every newly added route 404s,
+        // which would make this wizard unusable. Clear it before rendering.
+        $this->clearStaleCaches();
+
         return view('install.index');
+    }
+
+    /**
+     * Remove stale bootstrap caches so the wizard can never be blocked by a
+     * route/config/view table left behind by an earlier install or build.
+     *
+     * Only ever runs while the application is NOT installed, so it has no
+     * effect on a live production app.
+     */
+    private function clearStaleCaches(): void
+    {
+        foreach (['route', 'config', 'view'] as $type) {
+            try {
+                Artisan::call($type.':clear');
+            } catch (\Throwable $e) {
+                // A non-writable bootstrap/cache must not stop the wizard.
+                // The operator can still clear it manually via SSH.
+            }
+        }
     }
 
     // ─── Step 2: Server Requirements ───────────────────────────
