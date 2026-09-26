@@ -296,7 +296,7 @@ Full guide: `docs/cpanel-deployment.md`. Summary:
 # 3. cPanel → MySQL Databases → create DB + user, grant ALL PRIVILEGES
 # 4. cp .env.example .env  &&  php artisan key:generate
 # 5. composer install --no-dev --optimize-autoloader
-# 6. npm install --legacy-peer-deps && npm run build
+# 6. npm ci && npm run build
 # 7. cPanel → Domains → point document root at ~/semizzy-one/public
 # 8. php artisan migrate --seed --force
 # 9. php artisan storage:link
@@ -420,7 +420,7 @@ executed on a host with PHP 8.3+ and MySQL 8.0+:
 
 ```bash
 composer install --no-dev --optimize-autoloader
-npm install --legacy-peer-deps && npm run build
+npm ci && npm run build
 php artisan test                      # must pass against MySQL
 php artisan health:check              # all subsystems healthy
 php artisan migrate:fresh --seed      # clean install

@@ -385,7 +385,7 @@ transactions. Development fixtures must be clearly identified as test data.
 
 ```sh
 composer install --no-dev --optimize-autoloader
-npm install --legacy-peer-deps     # --legacy-peer-deps is REQUIRED
+npm ci                             # reproducible, uses package-lock.json
 npm run build                      # tsc && vite build
 php artisan test                   # runs against MySQL (semizzy_one_test)
 ```

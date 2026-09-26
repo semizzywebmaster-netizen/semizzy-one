@@ -48,7 +48,7 @@
         @unless (file_exists(public_path('build/manifest.json')))
             <div class="vite-missing">
                 Frontend assets are not built. Run:
-                <code>npm install --legacy-peer-deps &amp;&amp; npm run build</code>
+                <code>npm ci &amp;&amp; npm run build</code>
             </div>
         @endunless
 

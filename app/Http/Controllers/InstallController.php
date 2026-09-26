@@ -635,7 +635,7 @@ class InstallController extends Controller
         $buildOk = File::exists($buildManifest);
         $buildDetail = $buildOk
             ? 'manifest.json present'
-            : 'MISSING - run: npm install --legacy-peer-deps && npm run build';
+            : 'MISSING - run: npm ci && npm run build';
 
         $checks = [
             ['label' => 'Frontend build present', 'passed' => $buildOk, 'detail' => $buildDetail],
@@ -888,7 +888,7 @@ class InstallController extends Controller
             }
             if (!File::exists(public_path('build/manifest.json'))) {
                 $postInstall[] = 'Frontend assets are not built. Every page will return HTTP 500 '
-                    . 'until you run: npm install --legacy-peer-deps && npm run build';
+                    . 'until you run: npm ci && npm run build';
             }
             if (!File::exists(public_path('storage'))) {
                 $postInstall[] = 'public/storage symlink is missing. Run: php artisan storage:link';

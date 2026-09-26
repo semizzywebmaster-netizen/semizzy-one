@@ -168,7 +168,7 @@ if (!is_dir($root.'/vendor')) {
 }
 
 if (!file_exists($root.'/public/build/manifest.json')) {
-    warn('public/build/manifest.json is MISSING - run: npm install --legacy-peer-deps && npm run build');
+    warn('public/build/manifest.json is MISSING - run: npm ci && npm run build');
 } else {
     ok('Frontend build manifest is present');
 }
@@ -244,7 +244,7 @@ if ($missingInFile || $missingMethods) {
 git fetch origin
 git reset --hard origin/main
 composer install --no-dev --optimize-autoloader
-npm install --legacy-peer-deps && npm run build
+npm ci && npm run build
 rm -f storage/app/.installed
 php artisan route:clear && php artisan config:clear && php artisan view:clear</div>";
 } elseif (!empty($cached)) {
