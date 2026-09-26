@@ -16,11 +16,37 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InstallController;
 use Illuminate\Support\Facades\Route;
 
-// ─── Installation Wizard ──────────────────────
+// ─── Installation Wizard (§30 — 16 steps) ─────────
 Route::get('/install', [InstallController::class, 'index'])->name('install.index');
-Route::post('/install/check-requirements', [InstallController::class, 'checkRequirements'])->name('install.requirements');
-Route::post('/install/test-database', [InstallController::class, 'testDatabase'])->name('install.test-database');
-Route::post('/install/run', [InstallController::class, 'install'])->name('install.run');
+
+// Step 2-4: requirement checks
+Route::post('/install/check/server', [InstallController::class, 'checkServer'])->name('install.check.server');
+Route::post('/install/check/php', [InstallController::class, 'checkPhp'])->name('install.check.php');
+Route::post('/install/check/mysql', [InstallController::class, 'checkMysql'])->name('install.check.mysql');
+
+// Step 5: environment
+Route::post('/install/environment', [InstallController::class, 'environment'])->name('install.environment');
+
+// Step 6-7: MySQL connection + database validation
+Route::post('/install/database/connect', [InstallController::class, 'connectDatabase'])->name('install.database.connect');
+Route::post('/install/database/validate', [InstallController::class, 'validateDatabase'])->name('install.database.validate');
+
+// Step 8-9: application settings + admin account
+Route::post('/install/application', [InstallController::class, 'application'])->name('install.application');
+Route::post('/install/admin', [InstallController::class, 'admin'])->name('install.admin');
+
+// Step 10-11: migrations + core data
+Route::post('/install/migrate', [InstallController::class, 'migrate'])->name('install.migrate');
+Route::post('/install/seed', [InstallController::class, 'seed'])->name('install.seed');
+
+// Step 12-15: infrastructure & security checks
+Route::post('/install/check/storage', [InstallController::class, 'checkStorage'])->name('install.check.storage');
+Route::post('/install/check/cache', [InstallController::class, 'checkCache'])->name('install.check.cache');
+Route::post('/install/check/pwa', [InstallController::class, 'checkPwa'])->name('install.check.pwa');
+Route::post('/install/check/security', [InstallController::class, 'checkSecurity'])->name('install.check.security');
+
+// Step 16: finalization
+Route::post('/install/finalize', [InstallController::class, 'finalize'])->name('install.finalize');
 
 // ─── Guest Routes ─────────────────────────────
 Route::middleware('guest')->group(function () {

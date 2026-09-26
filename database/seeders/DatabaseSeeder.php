@@ -202,6 +202,17 @@ class DatabaseSeeder extends Seeder
             ['group' => 'brand', 'key' => 'primary_color', 'value' => '#155EEF', 'type' => 'string', 'description' => 'Primary brand color', 'is_public' => true],
             ['group' => 'brand', 'key' => 'teal_color', 'value' => '#00B8A9', 'type' => 'string', 'description' => 'Teal brand color', 'is_public' => true],
             ['group' => 'brand', 'key' => 'navy_color', 'value' => '#071A33', 'type' => 'string', 'description' => 'Navy brand color', 'is_public' => true],
+
+            // Storage
+            ['group' => 'storage', 'key' => 'default_disk', 'value' => 'local', 'type' => 'string', 'description' => 'Default storage disk', 'is_public' => false],
+            ['group' => 'storage', 'key' => 'public_disk', 'value' => 'public', 'type' => 'string', 'description' => 'Public storage disk', 'is_public' => false],
+            ['group' => 'storage', 'key' => 'max_upload_size', 'value' => '10240', 'type' => 'integer', 'description' => 'Maximum upload size in KB', 'is_public' => false],
+            ['group' => 'storage', 'key' => 'allowed_mimes', 'value' => 'jpg,jpeg,png,gif,webp,pdf,csv,txt', 'type' => 'string', 'description' => 'Allowed upload MIME extensions', 'is_public' => false],
+
+            // Backup
+            ['group' => 'backup', 'key' => 'enabled', 'value' => 'true', 'type' => 'boolean', 'description' => 'Automated backups enabled', 'is_public' => false],
+            ['group' => 'backup', 'key' => 'retention_days', 'value' => '14', 'type' => 'integer', 'description' => 'Backup retention in days', 'is_public' => false],
+            ['group' => 'backup', 'key' => 'schedule', 'value' => 'daily', 'type' => 'string', 'description' => 'Backup schedule', 'is_public' => false],
         ];
 
         foreach ($settings as $setting) {

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\CheckInstallation;
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\ForceFileSessionDuringInstall;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,6 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => CheckRole::class,
             'installed' => CheckInstallation::class,
+        ]);
+
+        $middleware->web(prepend: [
+            ForceFileSessionDuringInstall::class,
         ]);
 
         $middleware->web(append: [
