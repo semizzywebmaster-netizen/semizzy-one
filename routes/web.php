@@ -13,12 +13,14 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\InstallController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Installation Wizard ──────────────────────
-Route::get('/install', function () {
-    return view('install.index');
-})->name('install.index');
+Route::get('/install', [InstallController::class, 'index'])->name('install.index');
+Route::post('/install/check-requirements', [InstallController::class, 'checkRequirements'])->name('install.requirements');
+Route::post('/install/test-database', [InstallController::class, 'testDatabase'])->name('install.test-database');
+Route::post('/install/run', [InstallController::class, 'install'])->name('install.run');
 
 // ─── Guest Routes ─────────────────────────────
 Route::middleware('guest')->group(function () {
